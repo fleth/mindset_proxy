@@ -1,0 +1,40 @@
+<html>
+  <head>
+    <script src="sha1.js"></script>
+    <script src="http.js"></script>
+    <script src="parser.js"></script>
+    <script src="server.js"></script>
+    <script src="mindset_proxy.js"></script>
+    <script src="background.js"></script>
+    <title>MindsetProxy</title>
+  </head>
+  <body>
+    <div id="container">
+      <label>
+        <select id="port-picker"></select>
+      </label>
+      <button id="connectb">connect</button>
+      <a href="javascript:void(0)" id='viewer_url' hidden>viewer</a>
+      <br>
+      <label>
+        Status:
+        <span id="status"></span>
+      </label>
+      <br>
+      <label>
+      	ServerStatus:
+      	<span id="wssStatus"><font color='blue'><b>stopped</b></font></span>
+      </label>
+      <br>
+      <label>
+      	ServerPort:
+      	<input id="wssPort" value="9999">
+      </label>
+      <br>
+      <label>
+      	ServerURL:
+      	<input id="wssURL" disabled>
+      </label>
+    </div>
+  </body>
+</html>
