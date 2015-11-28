@@ -1,4 +1,3 @@
-
 'use strict';
 
 var connectionId = -1;
@@ -129,7 +128,14 @@ document.addEventListener('DOMContentLoaded', function() {
   $('viewer_url').addEventListener('click', function(){
     window.chrome.app.window.create(
       'viewer/viewer.html',
-      {'id': 'ViewerWindowID'});
+      {'id': 'ViewerWindowID',
+       'innerBounds': {
+         minWidth: 900,
+         minHeight: 550,
+         maxWidth: 900,
+         maxHeight: 550
+       }
+      });
     });
   switchEventListener($('connectb'), "click", null, openSelectedPort);
 });
