@@ -49,4 +49,5 @@ $(function() {
 		var plot = $.plot("#eeg", createdData);
 		plot.draw();
 	});
+	chrome.app.window.current().innerBounds.setSize(900, 550);
 });

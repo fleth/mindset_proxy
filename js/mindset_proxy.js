@@ -1,5 +1,3 @@
-'use strict';
-
 var connectionId = -1;
 var port = 9999
 
@@ -7,27 +5,8 @@ function $(objectId){
   return document.getElementById(objectId);
 }
 
-function onConnect(connectionInfo) {
-  if (!connectionInfo) {
-    setStatus('Could not open', 'red');
-    $('connectb').disabled = false;
-    $('port-picker').disabled = false;
-    $('wssPort').disabled = false;
-    return;
-  }
-  connectionId = connectionInfo.connectionId;
-  console.log(connectionInfo);
-  setStatus('Connected', 'lime');
-  $('connectb').innerText = "disconnect";
-  $('connectb').disabled = false;
-  switchEventListener($('connectb'), "click", openSelectedPort, disconnect);
-  websocket.start(
-  	$('wssPort'),
-  	$('wssStatus'),
-  	$('wssURL')
-  );
-  $('viewer_url').hidden = false
-  chrome.serial.onReceive.addListener(onReceive);
+function onData(data){
+  websocket.send(JSON.stringify(data));
 }
 
 function onReceive(info){
@@ -39,39 +18,84 @@ function onReceive(info){
   mindset_binary_parser(data, onData);
 }
 
-function onData(data){
-  websocket.send(JSON.stringify(data));
+function onConnect(connectionInfo) {
+  if (!connectionInfo) {
+    setStatus('Could not open', 'red', $('status'));
+    setDisabled(false);
+    return;
+  }
+  connectionId = connectionInfo.connectionId;
+  console.log(connectionInfo);
+  setStatus('Connected', 'lime', $('status'));
+  $('connectb').innerText = "disconnect";
+  $('connectb').disabled = false;
+  switchEventListener($('connectb'), "click", openSelectedPort, closeConnectedPort);
+
+  websocket.start(parseInt($('wssPort').value));
+  chrome.serial.onReceive.addListener(onReceive);
 }
 
-function disconnect(){
-  if (connectionId != -1) {
-    chrome.serial.setPaused(connectionId, true, function(){
-      chrome.serial.disconnect(connectionId, function(result){
-        if(result){
-          $('connectb').disabled = true;
-          setStatus('Disconnected', 'blue');
-          connectionId = -1;
-          $('connectb').innerText = "connect";
-          websocket.stop();
-          $('viewer_url').hidden = true;
-          switchEventListener($('connectb'), "click", disconnect, openSelectedPort);
-          $('connectb').disabled = false;
-          $('wssPort').disabled = false;
-          $('port-picker').disabled = false;
-        }
-      });
+function disconnect(id){
+  chrome.serial.setPaused(id, true, function(){
+    chrome.serial.disconnect(id, function(result){
+      if(result){
+        setStatus('Disconnected', 'blue', $('status'));
+        $('connectb').innerText = "connect";
+        $('connectb').disabled = false;
+        $('port-picker').disabled = false;
+        switchEventListener($('connectb'), "click", closeConnectedPort, openSelectedPort);
+      }
     });
+  });
+}
+
+function onStart(){
+  setStatus('started', 'lime', $('wssStatus'))
+  $('wssURL').value = 'ws://localhost:'+$('wssPort').value+'/';
+  $('wssPort').disabled = true;
+  $('viewer_url').hidden = false
+}
+
+function onStop(){
+  setStatus('stopped', "blue", $('wssStatus'));
+  $('wssURL').value = '';
+  $('wssPort').disabled = false;
+  $('viewer_url').hidden = true;
+}
+
+function openSelectedPort() {
+  setStatus("Connecting...", 'olive', $('status'));
+  var portPicker = $('port-picker');
+  var selectedPort = portPicker.options[portPicker.selectedIndex].value;
+  setDisabled(true);
+  chrome.serial.connect(selectedPort,onConnect);
+}
+
+function closeConnectedPort(){
+  if(connectionId != -1){
+    $('connectb').disabled = true;
+    disconnect(connectionId);
+    websocket.stop();
+    connectionId = -1;
+  }else{
     return;
   }
 }
 
-function setStatus(status, color) {
-  $('status').innerHTML = status.fontcolor(color).bold();
+function serialCloseAll(){
+  chrome.serial.getConnections(function(infos){
+    infos.forEach(function(info){
+      disconnect(info.connectionId);
+    });
+  });
 }
 
-function switchEventListener(objcet, event, removeListener, addListener){
-  objcet.removeEventListener(event, removeListener);
-  objcet.addEventListener(event, addListener);
+function socketCloseAll(){
+  chrome.sockets.tcpServer.getSockets(function(infos){
+    infos.forEach(function(info){
+      chrome.sockets.tcpServer.close(info.socketId);
+    });
+  });
 }
 
 function buildPortPicker(ports) {
@@ -85,57 +109,37 @@ function buildPortPicker(ports) {
     portOption.value = portOption.innerText = port.path;
     portPicker.appendChild(portOption);
   });
-
 }
 
-function openSelectedPort() {
-  setStatus("Connecting...", 'olive');
-  var portPicker = $('port-picker');
-  var selectedPort = portPicker.options[portPicker.selectedIndex].value;
-  portPicker.disabled = true;
-  $('wssPort').disabled = true;
-  $('connectb').disabled = true;
-  chrome.serial.connect(selectedPort,onConnect);
+function setDisabled(disabled) {
+  $('connectb').disabled = disabled;
+  $('port-picker').disabled = disabled;
+  $('wssPort').disabled = disabled;
 }
 
-function serialCloseAll(){
-  chrome.serial.getConnections(function(infos){
-    infos.forEach(function(info){
-      chrome.serial.setPaused(info.connectionId, true, function(){
-        chrome.serial.disconnect(info.connectionId, function(result){
-        });
-      });
-    });
-  });
+function setStatus(status, color, target) {
+  target.innerHTML = status.fontcolor(color).bold();
 }
 
-function socketCloseAll(){
-  chrome.sockets.tcpServer.getSockets(function(infos){
-    infos.forEach(function(info){
-      chrome.sockets.tcpServer.close(info.socketId);
-    });
-  });
+function switchEventListener(objcet, event, removeListener, addListener){
+  objcet.removeEventListener(event, removeListener);
+  objcet.addEventListener(event, addListener);
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-  chrome.app.window.current().innerBounds.setSize(260, 110);
+  chrome.app.window.current().innerBounds.setSize(300, 150);
   socketCloseAll();
   serialCloseAll();
-  setStatus('Disconnected', 'blue');
   chrome.serial.getDevices(function(devices) {
     buildPortPicker(devices);
   });
+  websocket.onStop = onStop;
+  websocket.onStart = onStart;
   $('viewer_url').addEventListener('click', function(){
-    window.chrome.app.window.create(
-      'viewer/viewer.html',
-      {'id': 'ViewerWindowID',
-       'innerBounds': {
-         minWidth: 900,
-         minHeight: 550,
-         maxWidth: 900,
-         maxHeight: 550
-       }
-      });
+    window.chrome.app.window.create('viewer/viewer.html', {
+     'id': 'ViewerWindowID',
+     'resizable': false
     });
+  });
   switchEventListener($('connectb'), "click", null, openSelectedPort);
 });
