@@ -34,20 +34,33 @@ $(function() {
 		return res;
 	}
 
+	function connect(address){
+		var ws = new WebSocket(address);
+		ws.addEventListener('open', function() {
+	  		console.log('Connected');
+	  		$('#message').text('Connected').css('color','lime');
+		});
+		ws.addEventListener('close', function() {
+	  		console.log('Connection closed');
+	  		$('#message').text('Connection closed').css('color','blue');
+		});
+		ws.addEventListener('message', function(e) {
+			console.log(e.data);
+			var receivedData = JSON.parse(e.data);
+			var createdData = createData(receivedData, $("#eeg_select"));
+			var plot = $.plot("#eeg", createdData);
+			plot.draw();
+		});
+		ws.add
+		return ws;
+	}
+
 	var address = 'ws://localhost:9999';
-	var ws = new WebSocket(address);
-	ws.addEventListener('open', function() {
-	  console.log('Connected');
+	var websocket = connect(address);
+	$("#reconnect").click(function(){
+		websocket.close();
+		websocket = connect(address);
 	});
-	ws.addEventListener('close', function() {
-	  console.log('Connection lost');
-	});
-	ws.addEventListener('message', function(e) {
-		console.log(e.data);
-		var receivedData = JSON.parse(e.data);
-		var createdData = createData(receivedData, $("#eeg_select"));
-		var plot = $.plot("#eeg", createdData);
-		plot.draw();
-	});
+
 	chrome.app.window.current().innerBounds.setSize(900, 550);
 });
