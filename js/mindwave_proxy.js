@@ -1,5 +1,5 @@
 var connectionId = -1;
-var port = 9999
+var port = 9999;
 
 function $(objectId){
   return document.getElementById(objectId);
