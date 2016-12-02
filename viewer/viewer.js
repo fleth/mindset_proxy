@@ -1,18 +1,29 @@
 $(function() {
-	var data = {},
-		totalPoints = 100;
+	var data = {};
+	var totalPoints = 100;
+	var message_plotted = false;
+	var draw_timer_handler = null;
 
 	function createData(brainwave, options) {
 		var keys = Object.keys(brainwave);
+		//存在しないkeyならoptionに追加する
 		keys.forEach(function(key){
 			if(options.find("option[value|="+key+"]").length == 0){
 				appendOption(options, key);
 			}
-			if(data[key] == undefined) data[key] = createInitData();
-			if(data[key].length > 0)
-					data[key] = data[key].slice(1);
-			data[key].push(brainwave[key]);
 		});
+		var options_children = options.children();
+		for(var i=0; i<options_children.length; i++){
+			var option = options_children.eq(i).text();
+			if(data[option] == undefined) data[option] = createInitData();
+			if(data[option].length > 0)
+					data[option] = data[option].slice(1);
+			if(brainwave[option] == undefined) {
+				data[option].push(0);
+			}else{
+				data[option].push(brainwave[option]);
+			}
+		}
 
 		var key = options.val();
 		var res = [];
@@ -47,20 +58,26 @@ $(function() {
 		ws.addEventListener('message', function(e) {
 			console.log(e.data);
 			var receivedData = JSON.parse(e.data);
-			var createdData = createData(receivedData, $("#eeg_select"));
-			var plot = $.plot("#eeg", createdData);
-			plot.draw();
+			createData(receivedData, $("#eeg_select"));
 		});
-		ws.add
 		return ws;
 	}
 
-	var address = 'ws://localhost:9999';
-	var websocket = connect(address);
+	function draw(){
+		var createdData = createData([], $("#eeg_select"));
+		var plot = $.plot("#eeg", createdData);
+		plot.draw();
+	}
+
+	var websocket = connect($("#wssURL").val());
 	$("#reconnect").click(function(){
 		websocket.close();
-		websocket = connect(address);
+		clearInterval(draw_timer_handler);
+		websocket = connect($("#wssURL").val());
+		draw_timer_handler = setInterval(draw, $("#speed").val());
 	});
 
-	chrome.app.window.current().innerBounds.setSize(900, 550);
+	draw_timer_handler = setInterval(draw, $("#speed").val());
+
+	chrome.app.window.current().innerBounds.setSize(900, 570);
 });
