@@ -3,6 +3,7 @@ $(function() {
 	var totalPoints = 100;
 	var message_plotted = false;
 	var draw_timer_handler = null;
+	var websocket = null;
 
 	function createData(brainwave, options) {
 		var keys = Object.keys(brainwave);
@@ -69,15 +70,18 @@ $(function() {
 		plot.draw();
 	}
 
-	var websocket = connect($("#wssURL").val());
+	function setup(){
+		websocket = connect($("#wssURL").val());
+		draw_timer_handler = setInterval(draw, $("#speed").val());
+	}
+
 	$("#reconnect").click(function(){
 		websocket.close();
 		clearInterval(draw_timer_handler);
-		websocket = connect($("#wssURL").val());
-		draw_timer_handler = setInterval(draw, $("#speed").val());
+		setup();
 	});
 
-	draw_timer_handler = setInterval(draw, $("#speed").val());
+	setup();
 
 	chrome.app.window.current().innerBounds.setSize(900, 570);
 });
