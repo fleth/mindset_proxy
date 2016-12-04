@@ -136,7 +136,7 @@ document.addEventListener('DOMContentLoaded', function () {
     websocket.onStop = onStop;
     websocket.onStart = onStart;
     $('viewer_url').addEventListener('click', function () {
-        window.chrome.app.window.create('viewer/viewer.html', {
+        chrome.app.window.create('viewer/viewer.html', {
             'id': 'ViewerWindowID',
             'resizable': false
         });

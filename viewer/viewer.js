@@ -1,19 +1,22 @@
 $(function () {
     var data = {};
     var totalPoints = 100;
-    var message_plotted = false;
     var draw_timer_handler = null;
     var websocket = null;
 
-    function pushData(brainwave, option) {
+    function createOptionData(timestamp, data, received) {
+        return {"timestamp": timestamp, "data": data, "received": received}
+    }
+
+    function pushData(brainwave, option, timestamp) {
         //データがなければ初期データを追加
-        if (data[option] == undefined) data[option] = createInitData();
+        if (data[option] == undefined) data[option] = createInitData(timestamp);
 
         data[option] = data[option].slice(1);
         if (brainwave[option] == undefined) {
-            data[option].push(0);
+            data[option].push(createOptionData(timestamp, 0, false));
         } else {
-            data[option].push(brainwave[option]);
+            data[option].push(createOptionData(timestamp, brainwave[option], false));
         }
     }
 
@@ -28,18 +31,20 @@ $(function () {
     }
 
     function createData(brainwave, options) {
+        var timestamp = Date.now();
+
         updateOptions(brainwave, options);
 
         var children = options.children();
         for (var i = 0; i < children.length; i++) {
             var option = children.eq(i).text();
-            pushData(brainwave, option);
+            pushData(brainwave, option, timestamp);
         }
 
         var key = options.val();
         var res = [];
         for (var i = 0; i < data[key].length; ++i) {
-            res.push([i, data[key][i]]);
+            res.push([i, data[key][i]["data"]]);
         }
         return [{label: key, data: res}];
     }
@@ -48,10 +53,10 @@ $(function () {
         options.append($("<option>").val(key).html(key));
     }
 
-    function createInitData() {
+    function createInitData(timestamp) {
         var res = [];
         for (var i = 0; i < totalPoints; i++) {
-            res[i] = 0;
+            res[i] = createOptionData(timestamp, 0, false);
         }
         return res;
     }
@@ -91,7 +96,16 @@ $(function () {
         setup();
     });
 
+    $("#download").click(function () {
+        var blob = new Blob([JSON.stringify(data)], {"type": "application/json"});
+
+        var download = $("<a>", {
+            href: window.URL.createObjectURL(blob),
+            download: "brainwave.json"
+        });
+        download[0].click();
+    });
     setup();
 
-    chrome.app.window.current().innerBounds.setSize(900, 570);
+    chrome.app.window.current().innerBounds.setSize(900, 590);
 });
