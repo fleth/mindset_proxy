@@ -5,7 +5,19 @@ $(function() {
 	var draw_timer_handler = null;
 	var websocket = null;
 
-	function createData(brainwave, options) {
+	function pushData(brainwave, option){
+		//データがなければ初期データを追加
+		if(data[option] == undefined) data[option] = createInitData();
+
+		data[option] = data[option].slice(1);
+		if(brainwave[option] == undefined) {
+				data[option].push(0);
+		}else{
+			data[option].push(brainwave[option]);
+		}
+	}
+
+	function updateOptions(brainwave, options){
 		var keys = Object.keys(brainwave);
 		//存在しないkeyならoptionに追加する
 		keys.forEach(function(key){
@@ -13,17 +25,15 @@ $(function() {
 				appendOption(options, key);
 			}
 		});
-		var options_children = options.children();
-		for(var i=0; i<options_children.length; i++){
-			var option = options_children.eq(i).text();
-			if(data[option] == undefined) data[option] = createInitData();
-			if(data[option].length > 0)
-					data[option] = data[option].slice(1);
-			if(brainwave[option] == undefined) {
-				data[option].push(0);
-			}else{
-				data[option].push(brainwave[option]);
-			}
+	}
+
+	function createData(brainwave, options) {
+		updateOptions(brainwave, options);
+
+		var children = options.children();
+		for(var i=0; i<children.length; i++){
+			var option = children.eq(i).text();
+			pushData(brainwave, option);
 		}
 
 		var key = options.val();
