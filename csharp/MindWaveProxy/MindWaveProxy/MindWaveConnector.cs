@@ -1,7 +1,6 @@
 ﻿using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Collections.Generic;
 using System.Net.Sockets;
 using Newtonsoft.Json;
 
@@ -40,7 +39,7 @@ namespace MindWaveProxy
             Disconnect();
         }
 
-        public async void Disconnect()
+        public void Disconnect()
         {
             if (readingTokenSource != null)
             {
