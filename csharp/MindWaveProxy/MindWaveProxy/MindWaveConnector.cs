@@ -1,7 +1,7 @@
-﻿using System.IO;
-using System.Text;
+﻿using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Collections.Generic;
 using System.Net.Sockets;
 using Newtonsoft.Json;
 
@@ -11,29 +11,20 @@ namespace MindWaveProxy
     {
         private CancellationTokenSource readingTokenSource;
 
-        private CancellationTokenSource recordingTokenSource;
-
         private TcpClient tcpClient;
 
         private string applicationName = "MindWaveConnector";
+
+        private Task readingTask;
+
+        private OnReceive readingReceiver;
+
+        private OnReceive recordingReceiver;
 
         public delegate void OnReceive(string data);
 
         public MindWaveConnector()
         {
-        }
-
-        ~MindWaveConnector()
-        {
-            Disconnect();
-        }
-
-        public void Disconnect()
-        {
-            tcpClient.Close();
-        }
-
-        public async void Connect(OnReceive onReceive) {
             tcpClient = new TcpClient("127.0.0.1", 13854);
 
             byte[] buffer = Encoding.ASCII.GetBytes(@"{
@@ -42,14 +33,32 @@ namespace MindWaveProxy
             }");
 
             Send(buffer);
+        }
+
+        ~MindWaveConnector()
+        {
+            Disconnect();
+        }
+
+        public async void Disconnect()
+        {
+            if (readingTokenSource != null)
+            {
+                readingTokenSource.Cancel();
+            }
+        }
+
+        public void Connect(OnReceive onReceive) {
+            readingReceiver = onReceive;
 
             readingTokenSource = new CancellationTokenSource();
             var token = readingTokenSource.Token;
 
-            await Task.Run(() => Receive(onReceive, token), token);
+            readingTask = new Task(() => Receive(OnReceived, token), token);
+            readingTask.Start();
         }
 
-        public async void StartRecord(OnReceive onReceive)
+        public void StartRecord(OnReceive onReceive)
         {
             byte[] buffer = Encoding.ASCII.GetBytes(@"{
                 ""startRecording"": {
@@ -61,12 +70,11 @@ namespace MindWaveProxy
                 ""applicationName"": """+applicationName+@"""
             }");
 
-            Send(buffer);
-
-            recordingTokenSource = new CancellationTokenSource();
-            var token = recordingTokenSource.Token;
-
-            await Task.Run(() => Receive((data) => StopRecordReceiving(data, onReceive), token), token);
+            if (!Send(buffer))
+            {
+                return;
+            }
+            recordingReceiver = onReceive;
         }
 
         public void StopRecord()
@@ -80,27 +88,38 @@ namespace MindWaveProxy
 
         private void StopRecordReceiving(string data, OnReceive onReceive)
         {
-
-            System.Console.WriteLine(data);
-
             var definition = new { status = "", sessionId = 0, filePath = "" };
 
-            var json = JsonConvert.DeserializeAnonymousType(data, definition);
-
-            if(json.status == "recordingStopped" && json.filePath != null)
+            try
             {
-                onReceive(json.filePath);
-                recordingTokenSource.Cancel();
+                var json = JsonConvert.DeserializeAnonymousType(data, definition);
+
+                if (json.status == "recordingStopped" && json.filePath != null)
+                {
+                    onReceive(json.filePath);
+                }
+            }
+            catch(System.Exception e)
+            {
+                System.Console.WriteLine(e.Message);
             }
         }
 
-        private void Send(byte[] buffer) {
+        private bool Send(byte[] buffer) {
             var stream = tcpClient.GetStream();
 
             if (stream.CanWrite)
             {
                 stream.Write(buffer, 0, buffer.Length);
+                return true;
             }
+            return false;
+        }
+
+        private void OnReceived(string data)
+        {
+            readingReceiver(data);
+            StopRecordReceiving(data, recordingReceiver);
         }
 
         private void Receive(OnReceive onReceive, CancellationToken token)

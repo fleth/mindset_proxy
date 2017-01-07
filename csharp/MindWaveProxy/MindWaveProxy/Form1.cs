@@ -1,11 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace MindWaveProxy
@@ -29,33 +22,61 @@ namespace MindWaveProxy
 
         private void Form1_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
-            mindwaveConnector.StopRecord();
-        }
-
-        private void button1_Click(object sender, EventArgs e)
-        {
-            mindwaveConnector.Connect(onWebSocketMessageReceive);
-            websocketServer.StartServer(9999);
         }
 
         private void onWebSocketMessageReceive(string message)
         {
             websocketServer.SendText(message);
+            Invoke(new MindWaveConnector.OnReceive(appendLog), message);
+        }
+
+        private void appendLog(string message)
+        {
+            richTextBox1.AppendText(message+"\n");
         }
 
         private void onRecordStopped(string filePath)
         {
             Console.WriteLine(filePath);
         }
+        
+        private void button1_Click(object sender, EventArgs e)
+        {
+            var port = Int32.Parse(textBox1.Text);
+            mindwaveConnector.Connect(onWebSocketMessageReceive);
+            websocketServer.StartServer(port);
+
+            button1.Enabled = false;
+            button2.Enabled = true;
+            button3.Enabled = true;
+        }
 
         private void button2_Click(object sender, EventArgs e)
         {
-            mindwaveConnector.StartRecord(onRecordStopped);
+            mindwaveConnector.StopRecord();
+            mindwaveConnector.Disconnect();
+            websocketServer.StopServer();
+
+            button1.Enabled = true;
+            button2.Enabled = false;
+            button3.Enabled = false;
+            button4.Enabled = false;
         }
 
         private void button3_Click(object sender, EventArgs e)
         {
+            mindwaveConnector.StartRecord(onRecordStopped);
+
+            button3.Enabled = false;
+            button4.Enabled = true;
+        }
+
+        private void button4_Click(object sender, EventArgs e)
+        {
             mindwaveConnector.StopRecord();
+
+            button3.Enabled = true;
+            button4.Enabled = false;
         }
     }
 }

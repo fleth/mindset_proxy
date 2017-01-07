@@ -12,6 +12,8 @@ namespace MindWaveProxy
 
         private CancellationToken token;
 
+        private WebSocketListener server;
+
         /// クライアントのWebSocketインスタンスを格納
         private List<WebSocket> _client = new List<WebSocket>();
         
@@ -19,7 +21,7 @@ namespace MindWaveProxy
         public async void StartServer(int port)
         {
             var endpoint = new IPEndPoint(IPAddress.Any, port);
-            WebSocketListener server = new WebSocketListener(endpoint);
+            server = new WebSocketListener(endpoint);
             var rfc6455 = new vtortola.WebSockets.Rfc6455.WebSocketFactoryRfc6455(server);
             server.Standards.RegisterStandard(rfc6455);
             server.Start();
@@ -29,7 +31,18 @@ namespace MindWaveProxy
             token = tokenSource.Token;
 
             await Task.Run(() => Accept(server), token);
+        }
 
+        public void StopServer()
+        {
+            if(tokenSource != null)
+            {
+                tokenSource.Cancel();
+            }
+            if(server != null)
+            {
+                server.Stop();
+            }
         }
 
         public async void Accept(WebSocketListener server)
@@ -42,7 +55,6 @@ namespace MindWaveProxy
                     await Task.Run(() => ProcessRequest(ws), token);
                 }
             }
-
         }
         
         /// WebSocket接続毎の処理
