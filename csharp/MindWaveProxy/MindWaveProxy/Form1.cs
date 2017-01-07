@@ -38,6 +38,7 @@ namespace MindWaveProxy
         private void onRecordStopped(string filePath)
         {
             Console.WriteLine(filePath);
+            MessageBox.Show(filePath, "保存しました", MessageBoxButtons.OK, MessageBoxIcon.Asterisk);
         }
         
         private void button1_Click(object sender, EventArgs e)
