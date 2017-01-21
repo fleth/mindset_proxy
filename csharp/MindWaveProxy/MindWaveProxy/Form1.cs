@@ -44,12 +44,21 @@ namespace MindWaveProxy
         private void button1_Click(object sender, EventArgs e)
         {
             var port = Int32.Parse(textBox1.Text);
-            mindwaveConnector.Connect(onWebSocketMessageReceive);
+            try
+            {
+                mindwaveConnector.Connect(onWebSocketMessageReceive, checkBox1.Checked);
+            }
+            catch (System.Net.Sockets.SocketException)
+            {
+                MessageBox.Show("ThinkGearConnectorを起動してください", "接続に失敗しました", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
             websocketServer.StartServer(port);
 
             button1.Enabled = false;
             button2.Enabled = true;
             button3.Enabled = true;
+            checkBox1.Enabled = false;
         }
 
         private void button2_Click(object sender, EventArgs e)
@@ -62,6 +71,7 @@ namespace MindWaveProxy
             button2.Enabled = false;
             button3.Enabled = false;
             button4.Enabled = false;
+            checkBox1.Enabled = true;
         }
 
         private void button3_Click(object sender, EventArgs e)

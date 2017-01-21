@@ -24,14 +24,6 @@ namespace MindWaveProxy
 
         public MindWaveConnector()
         {
-            tcpClient = new TcpClient("127.0.0.1", 13854);
-
-            byte[] buffer = Encoding.ASCII.GetBytes(@"{
-                ""enableRawOutput"": false,
-                ""format"": ""Json""
-            }");
-
-            Send(buffer);
         }
 
         ~MindWaveConnector()
@@ -47,7 +39,24 @@ namespace MindWaveProxy
             }
         }
 
-        public void Connect(OnReceive onReceive) {
+        private void ThinkGearConnect()
+        {
+            tcpClient = new TcpClient("127.0.0.1", 13854);
+        }
+
+        public void Connect(OnReceive onReceive, bool enableRawOutput) {
+            if (tcpClient == null)
+            {
+                ThinkGearConnect();
+            }
+
+            byte[] buffer = Encoding.ASCII.GetBytes(@"{
+                ""enableRawOutput"": " + enableRawOutput.ToString().ToLower() + @",
+                ""format"": ""Json""
+            }");
+
+            Send(buffer);
+
             readingReceiver = onReceive;
 
             readingTokenSource = new CancellationTokenSource();
@@ -124,7 +133,7 @@ namespace MindWaveProxy
         private void Receive(OnReceive onReceive, CancellationToken token)
         {
             var stream = tcpClient.GetStream();
-            byte[] buffer = new byte[2048];
+            byte[] buffer = new byte[51200];
 
             while (!token.IsCancellationRequested)
             {
@@ -133,7 +142,7 @@ namespace MindWaveProxy
                     continue;
                 }
 
-                var bytesRead = stream.Read(buffer, 0, 2048);
+                var bytesRead = stream.Read(buffer, 0, 51200);
                 string[] packets = Encoding.UTF8.GetString(buffer, 0, bytesRead).Split('\r');
                 
                 foreach (string s in packets)
